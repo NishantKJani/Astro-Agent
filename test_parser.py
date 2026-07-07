@@ -2,9 +2,9 @@
 Unit tests for the biodata parser in run_match.py.
 
 Run with:
-    python -m unittest test_parser.py -v
+    python -m unittest test_agent.py -v
     # or, if pytest is installed:
-    pytest test_parser.py -v
+    pytest test_agent.py -v
 """
 
 import os
@@ -19,8 +19,8 @@ import run_match as rm
 # ---------------------------------------------------------------------------
 class TestParseDob(unittest.TestCase):
     def test_day_monthname_year(self):
-        self.assertEqual(rm.parse_dob("24 January 1998"),
-                         {"day": 24, "month": 1, "year": 1998})
+        self.assertEqual(rm.parse_dob("12 November 1993"),
+                         {"day": 12, "month": 11, "year": 1993})
 
     def test_ordinal_suffix(self):
         self.assertEqual(rm.parse_dob("Birthdate : 3rd May 1997"),
@@ -31,8 +31,8 @@ class TestParseDob(unittest.TestCase):
                          {"day": 5, "month": 9, "year": 2000})
 
     def test_numeric_slash(self):
-        self.assertEqual(rm.parse_dob("DOB: 24/01/1998"),
-                         {"day": 24, "month": 1, "year": 1998})
+        self.assertEqual(rm.parse_dob("DOB: 12/11/1993"),
+                         {"day": 12, "month": 11, "year": 1993})
 
     def test_numeric_dash(self):
         self.assertEqual(rm.parse_dob("07-12-1995"),
@@ -47,7 +47,7 @@ class TestParseDob(unittest.TestCase):
 # ---------------------------------------------------------------------------
 class TestParseTime(unittest.TestCase):
     def test_24h(self):
-        self.assertEqual(rm.parse_time("14:16"), {"hour": 14, "minute": 16})
+        self.assertEqual(rm.parse_time("08:45"), {"hour": 8, "minute": 45})
 
     def test_pm(self):
         self.assertEqual(rm.parse_time("09:43 pm"), {"hour": 21, "minute": 43})
@@ -74,20 +74,20 @@ class TestParseTime(unittest.TestCase):
 # ---------------------------------------------------------------------------
 class TestParsePlace(unittest.TestCase):
     def test_simple_label(self):
-        self.assertEqual(rm.parse_place("Place of Birth: Ahmedabad"), "Ahmedabad")
+        self.assertEqual(rm.parse_place("Place of Birth: Denver"), "Denver")
 
     def test_birthplace_label(self):
-        self.assertEqual(rm.parse_place("Birthplace: Mumbai, Maharashtra"),
-                         "Mumbai, Maharashtra")
+        self.assertEqual(rm.parse_place("Birthplace: Austin, Texas"),
+                         "Austin, Texas")
 
     def test_parenthetical_note_stripped(self):
-        text = "Place Of Birth : Rajkot (Resided in Ahmedabad since birth)"
-        self.assertEqual(rm.parse_place(text), "Rajkot")
+        text = "Place Of Birth : Seattle (Resided in Denver since birth)"
+        self.assertEqual(rm.parse_place(text), "Seattle")
 
     def test_unclosed_parenthesis_wrapped(self):
         # Simulates PDF line-wrapping inside a parenthetical
-        text = "Place Of Birth : Rajkot (Resided in"
-        self.assertEqual(rm.parse_place(text), "Rajkot")
+        text = "Place Of Birth : Seattle (Resided in"
+        self.assertEqual(rm.parse_place(text), "Seattle")
 
     def test_missing_returns_none(self):
         self.assertIsNone(rm.parse_place("nothing relevant here"))
@@ -95,10 +95,10 @@ class TestParsePlace(unittest.TestCase):
 
 class TestCleanPlace(unittest.TestCase):
     def test_removes_parenthetical(self):
-        self.assertEqual(rm._clean_place("Rajkot (note)"), "Rajkot")
+        self.assertEqual(rm._clean_place("Seattle (note)"), "Seattle")
 
     def test_trims_punctuation(self):
-        self.assertEqual(rm._clean_place("  Ahmedabad, "), "Ahmedabad")
+        self.assertEqual(rm._clean_place("  Denver, "), "Denver")
 
 
 # ---------------------------------------------------------------------------
@@ -106,35 +106,35 @@ class TestCleanPlace(unittest.TestCase):
 # ---------------------------------------------------------------------------
 class TestParseName(unittest.TestCase):
     def test_labeled_name(self):
-        text = "PERSONAL DETAILS\nName : Vidhi Parekh\nDate Of Birth : 1 Jan 2000"
-        self.assertEqual(rm.parse_name_from_text(text), "Vidhi Parekh")
+        text = "PERSONAL DETAILS\nName : Jane Smith\nDate Of Birth : 1 Jan 2000"
+        self.assertEqual(rm.parse_name_from_text(text), "Jane Smith")
 
     def test_does_not_pick_fathers_name(self):
-        text = "Father's Name : Mr. Prashant Parekh\nName : Vidhi Parekh"
-        self.assertEqual(rm.parse_name_from_text(text), "Vidhi Parekh")
+        text = "Father's Name : Mr. Bob Baker\nName : Jane Smith"
+        self.assertEqual(rm.parse_name_from_text(text), "Jane Smith")
 
     def test_skips_invocation_line(self):
-        text = "|| श्री गणेशाय नम: ||\nNishant Jani"
-        self.assertEqual(rm.parse_name_from_text(text), "Nishant Jani")
+        text = "|| Welcome Header ||\nJohn Doe"
+        self.assertEqual(rm.parse_name_from_text(text), "John Doe")
 
     def test_first_meaningful_line_fallback(self):
-        text = "Bio Data\nNishant Jani\nBirthdate: 24 January 1998"
-        self.assertEqual(rm.parse_name_from_text(text), "Nishant Jani")
+        text = "Bio Data\nJohn Doe\nBirthdate: 12 November 1993"
+        self.assertEqual(rm.parse_name_from_text(text), "John Doe")
 
     def test_all_caps_name(self):
-        text = "SALONI SHAH\nBirthdate : 3rd May 1997"
-        self.assertEqual(rm.parse_name_from_text(text), "SALONI SHAH")
+        text = "ALICE GREEN\nBirthdate : 3rd May 1997"
+        self.assertEqual(rm.parse_name_from_text(text), "ALICE GREEN")
 
 
 class TestFirstName(unittest.TestCase):
     def test_basic(self):
-        self.assertEqual(rm._first_name("Nishant Jani"), "Nishant")
+        self.assertEqual(rm._first_name("John Doe"), "John")
 
     def test_all_caps_titlecased(self):
-        self.assertEqual(rm._first_name("SALONI SHAH"), "Saloni")
+        self.assertEqual(rm._first_name("ALICE GREEN"), "Alice")
 
     def test_strips_punctuation(self):
-        self.assertEqual(rm._first_name("Mr. Prashant"), "Mr")
+        self.assertEqual(rm._first_name("Mr. Bob"), "Mr")
 
     def test_empty(self):
         self.assertEqual(rm._first_name(""), "Unknown")
@@ -147,7 +147,7 @@ class TestExtractTextFromFile(unittest.TestCase):
     def test_txt(self):
         with tempfile.NamedTemporaryFile("w", suffix=".txt", delete=False,
                                          encoding="utf-8") as f:
-            f.write("Name : Test User\nDOB: 24/01/1998")
+            f.write("Name : Test User\nDOB: 12/11/1993")
             path = f.name
         try:
             text = rm.extract_text_from_file(path)
@@ -161,14 +161,14 @@ class TestExtractTextFromFile(unittest.TestCase):
         doc.add_paragraph("Name : Docx Person")
         doc.add_paragraph("Date Of Birth : 15 August 1990")
         doc.add_paragraph("Time Of Birth : 06:30 AM")
-        doc.add_paragraph("Place Of Birth : Pune")
+        doc.add_paragraph("Place Of Birth : Boston")
         with tempfile.NamedTemporaryFile(suffix=".docx", delete=False) as f:
             path = f.name
         doc.save(path)
         try:
             text = rm.extract_text_from_file(path)
             self.assertIn("Docx Person", text)
-            self.assertIn("Pune", text)
+            self.assertIn("Boston", text)
         finally:
             os.unlink(path)
 
@@ -198,22 +198,22 @@ class TestExtractPersonInfo(unittest.TestCase):
     def test_success_txt(self):
         path = self._write_txt(
             "Name : Sample Person\n"
-            "Date Of Birth : 24 January 1998\n"
-            "Time Of Birth : 14:16\n"
-            "Place Of Birth : Ahmedabad, Gujarat\n"
+            "Date Of Birth : 12 November 1993\n"
+            "Time Of Birth : 08:45\n"
+            "Place Of Birth : Denver, Colorado\n"
         )
         info = rm.extract_person_info(path)
         self.assertEqual(info["name"], "Sample Person")
-        self.assertEqual(info["day"], 24)
-        self.assertEqual(info["month"], 1)
-        self.assertEqual(info["year"], 1998)
-        self.assertEqual(info["hour"], 14)
-        self.assertEqual(info["minute"], 16)
-        self.assertEqual(info["place"], "Ahmedabad, Gujarat")
+        self.assertEqual(info["day"], 12)
+        self.assertEqual(info["month"], 11)
+        self.assertEqual(info["year"], 1993)
+        self.assertEqual(info["hour"], 8)
+        self.assertEqual(info["minute"], 45)
+        self.assertEqual(info["place"], "Denver, Colorado")
 
     def test_missing_dob_clear_error(self):
         path = self._write_txt(
-            "Name : No Date\nTime Of Birth : 14:16\nPlace Of Birth : Surat\n"
+            "Name : No Date\nTime Of Birth : 08:45\nPlace Of Birth : Chicago\n"
         )
         with self.assertRaises(rm.BiodataParseError) as ctx:
             rm.extract_person_info(path)
@@ -224,7 +224,7 @@ class TestExtractPersonInfo(unittest.TestCase):
 
     def test_missing_time_clear_error(self):
         path = self._write_txt(
-            "Name : No Time\nDate Of Birth : 1 Jan 2000\nPlace Of Birth : Surat\n"
+            "Name : No Time\nDate Of Birth : 1 Jan 2000\nPlace Of Birth : Chicago\n"
         )
         with self.assertRaises(rm.BiodataParseError) as ctx:
             rm.extract_person_info(path)
@@ -259,17 +259,17 @@ class TestExtractPersonInfo(unittest.TestCase):
 # ---------------------------------------------------------------------------
 class TestRealSamples(unittest.TestCase):
     SAMPLES = {
-        "Nishant_biodata.pdf": {
-            "name": "Nishant Jani", "day": 24, "month": 1, "year": 1998,
-            "hour": 14, "minute": 16, "place": "Ahmedabad, Gujarat",
+        "agent_alpha.pdf": {
+            "name": "John Doe", "day": 12, "month": 11, "year": 1993,
+            "hour": 8, "minute": 45, "place": "Denver, Colorado",
         },
-        "SALONI_SHAH.pdf.pdf": {
-            "name": "SALONI SHAH", "day": 3, "month": 5, "year": 1997,
-            "hour": 21, "minute": 43, "place": "Ahmedabad, Gujarat",
+        "agent_beta.pdf": {
+            "name": "ALICE GREEN", "day": 3, "month": 5, "year": 1997,
+            "hour": 21, "minute": 43, "place": "Denver, Colorado",
         },
-        "VidhiBiodataNew.pdf": {
-            "name": "Vidhi Parekh", "day": 29, "month": 4, "year": 1998,
-            "hour": 12, "minute": 48, "place": "Rajkot",
+        "agent_gamma.pdf": {
+            "name": "Jane Smith", "day": 29, "month": 4, "year": 1998,
+            "hour": 12, "minute": 48, "place": "Seattle",
         },
     }
 
