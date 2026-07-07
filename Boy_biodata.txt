@@ -1,0 +1,4 @@
+Name: Rahul
+DOB: 1 February 1998
+Time: 12:00
+Place of birth: Mumbai, Maharashtra

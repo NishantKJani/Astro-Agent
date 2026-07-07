@@ -1,0 +1,4 @@
+Name: Priya
+DOB: 15 March 1997
+Time: 15:00
+Place of birth: New Delhi, India
